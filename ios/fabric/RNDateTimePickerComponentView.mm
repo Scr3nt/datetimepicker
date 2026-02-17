@@ -103,24 +103,22 @@ NSDate* adjustMinimumDate (NSDate* minimumDate, int minuteInterval) {
         return;
     }
     CGSize size = [_dummyPicker sizeThatFits:UILayoutFittingCompressedSize];
-    // iOS DatePicker requires a minimum width of 280 points for proper display
-    // See: https://github.com/react-native-datetimepicker/datetimepicker/issues/1014
-    size.width = MAX(size.width, 280);
-    
-    // For inline (calendar) display style, use a larger default width to fill the container
-    // The actual width will be constrained by the parent container's layout
+    size.width += 10;
+
+    // Workaround: sizeThatFits: returns incorrect height for
+    // UIDatePickerModeDateAndTime + UIDatePickerStyleInline (Apple bug).
+    // The returned height only accounts for the calendar, missing the time row.
     if (@available(iOS 14.0, *)) {
-        if (_dummyPicker.preferredDatePickerStyle == UIDatePickerStyleInline) {
-            // Use a large width that will be constrained by the parent
-            // This allows the calendar to expand to full width of its container
-            size.width = 375; // Standard iPhone width, will be constrained by parent if smaller
-        } else {
-            size.width += 10;
+        if (_dummyPicker.datePickerMode == UIDatePickerModeDateAndTime &&
+            _dummyPicker.preferredDatePickerStyle == UIDatePickerStyleInline) {
+            UIDatePicker *timePicker = [UIDatePicker new];
+            timePicker.datePickerMode = UIDatePickerModeTime;
+            timePicker.preferredDatePickerStyle = UIDatePickerStyleInline;
+            CGSize timeSize = [timePicker sizeThatFits:UILayoutFittingCompressedSize];
+            size.height += timeSize.height;
         }
-    } else {
-        size.width += 10;
     }
-    
+
     auto newState = RNDateTimePickerState{RCTSizeFromCGSize(size)};
     _state->updateState(std::move(newState));
 }
